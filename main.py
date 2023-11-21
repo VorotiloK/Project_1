@@ -129,3 +129,4 @@ class FileProcessor:
             self.logger.info(f'Очищаем временные файлы и исходный файл')
             self.clear(name)
             self.logger.info(f'Очистка произведена успешно')
+
