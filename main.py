@@ -129,8 +129,3 @@ class FileProcessor:
             self.logger.info(f'Очищаем временные файлы и исходный файл')
             self.clear(name)
             self.logger.info(f'Очистка произведена успешно')
-
-        except Exception as e:
-            self.logger.error(f'Ошибка при обработке файла {name}: {e}', exc_info=True)
-
-   
