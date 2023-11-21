@@ -71,4 +71,62 @@ class FileProcessor:
             .option('compression', 'gzip') \
             .csv(self.dir_save)
 
+    def get_random_file_name(self):
+        '''
+        Get the name of the processed file for renaming
+        :param self:
+        :return: name of the processed file
+        '''
+
+        command_save = f'hdfs dfs -ls {self.dir_save}'
+
+        output_rname = subprocess.check_output(command_save, shell=True)
+        path_random_name = output_rname.decode().split('\n')
+        random_file_name = path_random_name[-2].split('/')[-1]
+        return random_file_name
+
+    def clear(self, name):
+        '''
+        Delete the original files and the intermediate folder
+        :param self:
+        :param name: file name
+        :return:
+        '''
+        # delete source file
+        command_delete_file = f'hdfs dfs -rm {self.dir_in}/{name}'
+        subprocess.run(command_delete_file, shell=True)
+
+        # delete tmp dir
+        command_delete_spark_save = f'hdfs dfs -rm -r {self.dir_save}'
+        subprocess.run(command_delete_spark_save, shell=True)
+
+    def process_file(self, name, spark):
+        """
+        Form the data processing process for each file
+        :param name: file name
+        :param spark: SparkSession object for reading the file
+        :return:
+        """
+        try:
+            csv_file = f'{self.dir_in}/{name}'
+            column_value = name.split('_')[1]
+
+            self.logger.info(f'Обрабатываем файл {self.dir_in}/{name}')
+            self.change_file(csv_file, column_value, spark)
+            self.logger.info(f'Файл {self.dir_in}/{name} успешно обработан')
+
+            random_file_name = self.get_random_file_name()
+            # change file_name and exception .csv in csv.gz
+            self.logger.info(f'Перемещаем файл {name} в директорию {self.dir_out}')
+            if name.endswith('.csv'):
+                command_renaming = f'hdfs dfs -mv {self.dir_save}/{random_file_name} {self.dir_out}/{name.replace(".csv", ".csv.gz")}'
+            else:
+                command_renaming = f'hdfs dfs -mv {self.dir_save}/{random_file_name} {self.dir_out}/{name}'
+
+            subprocess.run(command_renaming, shell=True)
+            self.logger.info(f'Файл {name} успешно перемещен')
+
+            self.logger.info(f'Очищаем временные файлы и исходный файл')
+            self.clear(name)
+            self.logger.info(f'Очистка произведена успешно')
 
