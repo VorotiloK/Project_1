@@ -130,3 +130,63 @@ class FileProcessor:
             self.clear(name)
             self.logger.info(f'Очистка произведена успешно')
 
+        except Exception as e:
+            self.logger.error(f'Ошибка при обработке файла {name}: {e}', exc_info=True)
+
+    def check_dir(self, directory):
+        '''
+
+        :param directory:
+        :return:
+        '''
+        # checking the existence of a directory
+        command_check = f'hdfs dfs -test -e {directory}'
+        result = subprocess.run(command_check, shell=True)
+        folder_exist = result.returncode == '0'
+
+        if not folder_exist:
+            command_mkdir = f'hdfs dfs -mkdir -p {directory}'
+            subprocess.run(command_mkdir, shell=True)
+            self.logger.info(f'Создана папка {directory}')
+
+    def process_run(self):
+        """
+
+        :return:
+        """
+        files_name = self.get_file_names()
+        if not files_name:
+            self.logger.info('Нет файлов для обработки')
+            return
+
+        spark = (
+            SparkSession
+            .builder
+            .master('yarn')
+            .appName('HDFS connection')
+            .config("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
+            .getOrCreate()
+        )
+
+        try:
+            self.check_dir(dir_out)
+            self.check_dir(dir_save)
+
+            for name in files_name[:5]:
+                self.process_file(name, spark)
+
+        except Exception as e:
+            self.logger.error(f'Ошибка при обработке файлов {e}', exc_info=True)
+        finally:
+            spark.stop()
+            self.logger.info('Сессия Spark остановлена')
+
+
+if __name__ == '__main__':
+    dir_in = '/raw_data/source_08_rnis/files/telematics'
+    dir_out = '/raw_data/source_08_rnis/files/telematics_test'
+    dir_save = '/raw_data/source_08_rnis/files/spark_save'
+
+    file_processor = FileProcessor(dir_in, dir_out, dir_save)
+    file_processor.process_run()
+
